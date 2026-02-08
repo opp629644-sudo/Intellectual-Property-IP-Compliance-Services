@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  IN_PROCESS
+  COMPLETED
+  REJECTED
+}
+
+enum ConsultationMode {
+  ONLINE
+  OFFICE
+}
+
+model User {
+  id               String        @id @default(cuid())
+  name             String
+  email            String        @unique
+  phone            String?
+  companyName      String?
+  passwordHash     String
+  role             Role          @default(CLIENT)
+  emailVerified    Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  appointments     Appointment[]
+  consultantNotes  ConsultantNote[] @relation("ConsultantAuthor")
+}
+
+model Service {
+  id                String       @id @default(cuid())
+  slug              String       @unique
+  title             String
+  description       String
+  icon              String
+  price             Float
+  category          String
+  enabled           Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  appointments      Appointment[]
+}
+
+model Appointment {
+  id                String             @id @default(cuid())
+  userId            String
+  serviceId         String
+  date              DateTime
+  timeSlot          String
+  mode              ConsultationMode
+  status            AppointmentStatus  @default(PENDING)
+  details           String?
+  documentPath      String?
+  assignedConsultant String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id])
+  service           Service            @relation(fields: [serviceId], references: [id])
+  notes             ConsultantNote[]
+  invoices          Invoice[]
+}
+
+model ConsultantNote {
+  id             String       @id @default(cuid())
+  appointmentId  String
+  authorId       String
+  note           String
+  createdAt      DateTime     @default(now())
+  appointment    Appointment  @relation(fields: [appointmentId], references: [id])
+  author         User         @relation("ConsultantAuthor", fields: [authorId], references: [id])
+}
+
+model Invoice {
+  id             String      @id @default(cuid())
+  appointmentId  String
+  amount         Float
+  url            String
+  issuedAt       DateTime    @default(now())
+  appointment    Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model AvailabilityRule {
+  id             String      @id @default(cuid())
+  dayOfWeek      Int
+  startTime      String
+  endTime        String
+  slotMinutes    Int         @default(30)
+  active         Boolean     @default(true)
+}
+
+model HolidayBlock {
+  id             String      @id @default(cuid())
+  date           DateTime    @unique
+  reason         String?
+}
